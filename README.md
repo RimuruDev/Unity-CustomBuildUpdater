@@ -1,3 +1,5 @@
+**[🇷🇺 Read this in Russian](RU_README.md)**
+
 # Unity Custom Build Updater
 
 Unity Custom Build Updater is a Unity package designed to streamline the build process for your Unity projects. It automates versioning, archiving, and build path management, making it easier to manage and distribute builds. This package is particularly useful for WebGL builds.
