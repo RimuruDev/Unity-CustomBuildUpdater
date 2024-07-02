@@ -8,18 +8,23 @@ using UnityEngine;
 
 namespace RimuruDev.Unity_CustomBuildUpdater.CustomBuildUpdater.Editor
 {
+    // TODO: Add set active debug log
     public class BuildVersionUpdater : IPreprocessBuildWithReport, IPostprocessBuildWithReport
     {
         public int callbackOrder => 0;
 
         private static BuildConfig config;
+
+        // ReSharper disable once FieldCanBeMadeReadOnly.Local
+        // ReSharper disable once ConvertToConstant.Local
         private static string defaultBuildPath = "Builds";
 
-        private void LoadConfig()
+        private static void LoadConfig()
         {
             config = Resources.Load<BuildConfig>("Editor/BuildConfig");
             if (config == null)
             {
+                // TODO: Add Auto create default config
                 Debug.LogError("BuildConfig not found. Please create it in the Resources/Editor folder.");
             }
         }
@@ -73,7 +78,7 @@ namespace RimuruDev.Unity_CustomBuildUpdater.CustomBuildUpdater.Editor
             if (!File.Exists(versionFilePath))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(versionFilePath));
-                File.WriteAllText(versionFilePath, "1.0.0.0");
+                File.WriteAllText(versionFilePath, config.initialVersion);
             }
         }
 
@@ -130,39 +135,28 @@ namespace RimuruDev.Unity_CustomBuildUpdater.CustomBuildUpdater.Editor
 
         private string GetFinalBuildPath(string buildPath, string extension)
         {
-            string finalPath;
-            if (config.buildPathType == BuildPathType.Default)
-            {
-                finalPath = Path.Combine(Application.dataPath, "..", defaultBuildPath,
-                    $"{config.companyName}.{config.productName}.v{PlayerSettings.bundleVersion}{extension}");
-            }
-            else
-            {
-                finalPath = Path.Combine(config.customBuildPath,
-                    $"{config.companyName}.{config.productName}.v{PlayerSettings.bundleVersion}{extension}");
-            }
+            var finalPath = config.buildPathType == BuildPathType.Default
+                ? Path.Combine(Application.dataPath, "..", defaultBuildPath, $"{config.companyName}.{config.productName}.v{PlayerSettings.bundleVersion}{extension}")
+                : Path.Combine(config.customBuildPath, $"{config.companyName}.{config.productName}.v{PlayerSettings.bundleVersion}{extension}");
 
             return finalPath;
         }
 
         private void RenameBuildPath(string oldPath, string newPath)
         {
-            try
+            var newPathDirectory = Path.GetDirectoryName(newPath);
+            if (!Directory.Exists(newPathDirectory))
             {
-                if (Directory.Exists(oldPath))
-                {
-                    Directory.Move(oldPath, newPath);
-                }
-                else if (File.Exists(oldPath))
-                {
-                    File.Move(oldPath, newPath);
-                }
+                Directory.CreateDirectory(newPathDirectory);
             }
-            catch (DirectoryNotFoundException directoryNotFoundException)
+
+            if (Directory.Exists(oldPath))
             {
-                Debug.Log(
-                    "<color=red>You have collected the project in the wrong folder that you specified in the settings!!!</color>");
-                Debug.LogException(directoryNotFoundException);
+                Directory.Move(oldPath, newPath);
+            }
+            else if (File.Exists(oldPath))
+            {
+                File.Move(oldPath, newPath);
             }
         }
 
@@ -192,11 +186,11 @@ namespace RimuruDev.Unity_CustomBuildUpdater.CustomBuildUpdater.Editor
 
         private void CreateZipFromDirectory(string sourceDir, string zipFile)
         {
-            using (var zip = ZipFile.Open(zipFile, ZipArchiveMode.Create))
+            using (ZipArchive zip = ZipFile.Open(zipFile, ZipArchiveMode.Create))
             {
                 var dirInfo = new DirectoryInfo(sourceDir);
 
-                foreach (var file in dirInfo.GetFiles())
+                foreach (FileInfo file in dirInfo.GetFiles())
                 {
                     zip.CreateEntryFromFile(file.FullName, file.Name);
                 }
@@ -218,6 +212,43 @@ namespace RimuruDev.Unity_CustomBuildUpdater.CustomBuildUpdater.Editor
             foreach (var subDir in dir.GetDirectories())
             {
                 AddDirectoryToZip(zip, subDir, Path.Combine(entryName, subDir.Name));
+            }
+        }
+
+        //[MenuItem("RimuruDev Tools/Build Project (DANGEROUS!!!)")]
+        public static void BuildProject()
+        {
+            LoadConfig();
+
+            if (config == null)
+                return;
+
+            var buildPath = config.buildPathType == BuildPathType.Default
+                ? Path.Combine(Application.dataPath, "..", defaultBuildPath)
+                : config.customBuildPath;
+
+            if (!Directory.Exists(buildPath))
+            {
+                Directory.CreateDirectory(buildPath);
+            }
+
+            var selectedPath = EditorUtility.SaveFolderPanel("Choose Build Location", buildPath, "");
+
+            if (!string.IsNullOrEmpty(selectedPath))
+            {
+                config.customBuildPath = selectedPath;
+                EditorUtility.SetDirty(config);
+
+                // Trigger the actual build process (example for WebGL build) :D
+                var buildPlayerOptions = new BuildPlayerOptions
+                {
+                    // TODO: Write a config for the build according to the config.
+                    scenes = new[] { "Assets/Scenes/MainScene.unity" },
+                    locationPathName = selectedPath,
+                    target = BuildTarget.WebGL,
+                    options = BuildOptions.None
+                };
+                BuildPipeline.BuildPlayer(buildPlayerOptions);
             }
         }
     }

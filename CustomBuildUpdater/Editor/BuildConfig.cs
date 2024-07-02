@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace RimuruDev.Unity_CustomBuildUpdater.CustomBuildUpdater.Editor
@@ -7,6 +8,7 @@ namespace RimuruDev.Unity_CustomBuildUpdater.CustomBuildUpdater.Editor
     {
         public string companyName = "AbyssMoth";
         public string productName = "SuperGame";
+        public string initialVersion = "1.0.0.0";
         public BuildPathType buildPathType = BuildPathType.Default;
         public string customBuildPath = "Builds";
         public bool archiveBuild = true;
